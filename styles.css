@@ -1,0 +1,21 @@
+.app { 
+    display: flex;
+    gap: 5rem;
+    height: 100vh;
+    background-color: beige;
+    position:relative;
+}
+.form__add {
+    width: 50%
+}
+.select-position {
+    display: flex;
+    flex-direction: column;
+}
+
+#map {
+
+    
+width: 700px;
+height: 400px;
+  }
