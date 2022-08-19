@@ -9,7 +9,7 @@ const inputDuration = document.querySelector('.input-duration')
 // App Class
 class App {
     _map;
-    _mapZoomLevel = 10
+    _mapZoomLevel = 15
 
     constructor() {
         this._init()
@@ -20,6 +20,7 @@ class App {
             const pos = await this._getPosition()
             const { longitude: lng, latitude: lat } = pos.coords
             await this._loadMap(lng, lat)
+            this._setInitMarker(lng, lat)
 
         }
         catch (e) {
@@ -51,6 +52,16 @@ class App {
             throw new Error('Could not Initialize Map')
         }
 
+    }
+
+    _setInitMarker(lng, lat) {
+        const marker = new mapboxgl.Marker()
+            .setLngLat([lng, lat])
+            .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('Current Position'))
+            .addTo(this._map);
+        const lngLat = marker.getLngLat();
+        // Print the marker's longitude and latitude values in the console
+        console.log(`Longitude: ${lngLat.lng}, Latitude: ${lngLat.lat}`);
     }
 }
 
