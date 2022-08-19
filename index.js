@@ -8,13 +8,18 @@ const inputDuration = document.querySelector('.input-duration')
 
 // App Class
 class App {
+    _accessToken = 'pk.eyJ1IjoibWlsa29xcSIsImEiOiJjbDZtZTY3encwMzM3M2JubDFncjgzM2x1In0.LnjZPWDRE_YiImykL9OeMw'
+    _distance;
     _map;
-    _mapZoomLevel = 15
+    _mapZoomLevel = 13
     _markers = []
     _markerStart;
-    _markerInit;
+    _markerStartCoords;
+    _markerEnd;
+    _markerEndCoords;
+    _markerRoutes = []
     _userLng;
-    _userLat
+    _userLat;
 
     constructor() {
         this._init()
@@ -28,9 +33,9 @@ class App {
             this._userLng = lng;
             this._userLat = lat;
             await this._loadMap(lng, lat)
-            this._setInitMarker(lng, lat)
-            this._map.on('click', this._setInitRoutes.bind(this))
-            selectPos.addEventListener('change', this._setInitMarkerToDrag.bind(this))
+            this._setMarkerStart(lng, lat)
+            this._map.on('click', this._setMarkerEnd.bind(this))
+            selectPos.addEventListener('change', this._setMarkerStartToDrag.bind(this))
         }
         catch (e) {
             console.log(e)
@@ -45,11 +50,19 @@ class App {
         });
     };
 
+    wait(seconds) {
+        return new Promise((resolve) => {
+
+            setTimeout(resolve, seconds * 1000)
+
+        })
+    }
+
     async _loadMap(lng, lat) {
         try {
             // Get Map with position coords.
             this._map = new mapboxgl.Map({
-                accessToken: 'pk.eyJ1IjoibWlsa29xcSIsImEiOiJjbDZtZTY3encwMzM3M2JubDFncjgzM2x1In0.LnjZPWDRE_YiImykL9OeMw',
+                accessToken: this._accessToken,
                 container: 'map',
                 style: 'mapbox://styles/mapbox/streets-v11',
                 center: [lng, lat], // starting position
@@ -63,57 +76,120 @@ class App {
 
     }
 
-    _setInitMarker(lng, lat) {
-        this._markerInit = new mapboxgl.Marker()
+    _setMarkerStart(lng, lat) {
+        this._markerStart = new mapboxgl.Marker()
             .setLngLat([lng, lat])
             .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('Current Position'))
             .addTo(this._map);
-        const lngLat = this._markerInit.getLngLat();
-        this._markers.push(this._markerInit)
+        this._markerStartCoords = Object.values(this._markerStart.getLngLat());
+        this._markers.push(this._markerStart)
+        this._markerRoutes.push(this._markerStartCoords)
         // Print the marker's longitude and latitude values in the console
-        console.log(`Longitude: ${lngLat.lng}, Latitude: ${lngLat.lat}`);
+        console.log(this._markerStartCoords)
     }
 
-    _setInitRoutes(e) {
-
+    _setMarkerEnd(e) {
         // Get Lng/Lat positions from click on map
-        let lng = e.lngLat.lng
-        let lat = e.lngLat.lat
+        let { lng, lat } = e.lngLat
 
-        // Set First Marker
-        if (!this._markerStart) {
+        // Assigning to markerEndCoords global property.
+        this._markerEndCoords = [lng, lat]
 
-            this._markerStart = new mapboxgl.Marker({
+        // Set Marker End if it doesn't exist.
+        if (!this._markerEnd) {
+
+            this._markerEnd = new mapboxgl.Marker({
                 color: "#FFFFFF",
                 draggable: true
             }).setLngLat([lng, lat])
                 .addTo(this._map)
 
             inputPosEnding.value = `${lng}, ${lat.toFixed(4)}`
-            this._markers.push(this._markerStart)
+            this._markers.push(this._markerEnd)
+            this._markerRoutes.push([lng, lat])
+            this._updateRoute(this._markerStartCoords, this._markerEndCoords)
+
         }
+
 
         document.querySelector('.form').classList.remove('hidden')
 
         function onDragEnd() {
             // Function fires when dragging of 2nd marker stops.
             // Get Lng/Lat from Marker
-            const lngLat = this._markerStart.getLngLat();
-            inputPosEnding.value = `${lngLat.lng.toFixed(4)}, ${lngLat.lat.toFixed(4)}`;
+            this._markerEndCoords = Object.values(this._markerEnd.getLngLat());
+            inputPosEnding.value = `${this._markerEndCoords[0].toFixed(4)}, ${this._markerEndCoords[1].toFixed(4)}`;
+            this._updateRoute(this._markerStartCoords, this._markerEndCoords)
         }
-        this._markerStart.on('drag', onDragEnd.bind(this))
+        this._markerEnd.on('dragend', onDragEnd.bind(this))
+
 
     }
 
-    _setInitMarkerToDrag() {
+    _setMarkerStartToDrag() {
         if (selectPos.value === 'dragToPos') {
-            this._markerInit.setDraggable(true)
-            console.log(this._markerInit.isDraggable())
+            this._markerStart.setDraggable(true)
+            console.log(this._markerStart.isDraggable())
+            this._markerStart.on('dragend', this._updateMarkerStartCoords.bind(this))
+
+
         }
 
         if (selectPos.value === 'currentPos') {
-            this._markerInit.remove()
-            this._setInitMarker(this._userLng, this._userLat)
+            this._markerStart.remove()
+            this._setMarkerStart(this._userLng, this._userLat)
+            this._markerStartCoords = Object.values(this._markerStart.getLngLat())
+            this._updateRoute(this._markerStartCoords, this._markerEndCoords)
+        }
+    }
+
+    _updateMarkerStartCoords() {
+        this._markerStartCoords = Object.values(this._markerStart.getLngLat())
+        console.log(this._markerStartCoords)
+        this._updateRoute(this._markerStartCoords, this._markerEndCoords)
+
+    }
+
+    async _updateRoute(start, end) {
+        const query = await fetch(
+            `https://api.mapbox.com/directions/v5/mapbox/cycling/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${this._accessToken}`
+        );
+        const json = await query.json();
+        const data = json.routes[0];
+        this._distance = (data.distance / 1000).toFixed(2)
+        inputDistance.value = `${this._distance}km`
+        const route = data.geometry.coordinates;
+        const geojson = {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'LineString',
+                coordinates: route
+            }
+        };
+        // if the route already exists on the map, we'll reset it using setData
+        if (this._map.getSource('route')) {
+            this._map.getSource('route').setData(geojson);
+        }
+        // otherwise, we'll make a new request
+        else {
+            this._map.addLayer({
+                id: 'route',
+                type: 'line',
+                source: {
+                    type: 'geojson',
+                    data: geojson
+                },
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': '#3887be',
+                    'line-width': 5,
+                    'line-opacity': 0.75
+                }
+            });
         }
     }
 }
