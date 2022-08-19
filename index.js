@@ -10,9 +10,12 @@ const inputDuration = document.querySelector('.input-duration')
 class App {
     _map;
     _mapZoomLevel = 15
+    _markers = []
+    _markerStart;
 
     constructor() {
         this._init()
+
     }
 
     async _init() {
@@ -21,6 +24,7 @@ class App {
             const { longitude: lng, latitude: lat } = pos.coords
             await this._loadMap(lng, lat)
             this._setInitMarker(lng, lat)
+            this._map.on('click', this._setInitRoutes.bind(this))
 
         }
         catch (e) {
@@ -62,6 +66,30 @@ class App {
         const lngLat = marker.getLngLat();
         // Print the marker's longitude and latitude values in the console
         console.log(`Longitude: ${lngLat.lng}, Latitude: ${lngLat.lat}`);
+    }
+
+    _setInitRoutes(e) {
+        // Get Lng/Lat positions from click on map
+        let lng = e.lngLat.lng
+        let lat = e.lngLat.lat
+        inputPosEnding.value = `${lng}, ${lat.toFixed(4)}`
+        // Set First Marker
+        if (!this._markerStart) this._markerStart = new mapboxgl.Marker({
+            color: "#FFFFFF",
+            draggable: true
+        })
+            .setLngLat([lng, lat])
+            .addTo(this._map)
+        document.querySelector('.form').classList.remove('hidden')
+        function onDragEnd() {
+            // Get Lng/Lat from Marker
+            const lngLat = this_markerStart.getLngLat();
+            inputPosEnding.value = `Longitude: ${lngLat.lng.toFixed(4)}<br />Latitude: ${lngLat.lat.toFixed(4)}`;
+        }
+        this._markerStart.on('dragend', onDragEnd.bind(this))
+
+
+
     }
 }
 

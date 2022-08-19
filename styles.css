@@ -15,7 +15,10 @@
 
 #map {
 
-    
 width: 700px;
 height: 400px;
   }
+
+.hidden {
+    opacity: 0;
+}
