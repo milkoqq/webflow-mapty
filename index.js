@@ -1,5 +1,12 @@
-console.log('connected')
 
+// DOM Elements
+const selectPos = document.querySelector('.select-position')
+const selectType = document.querySelector('.select-workout')
+const inputPosEnding = document.querySelector('.position-ending')
+const inputDistance = document.querySelector('.input-distance')
+const inputDuration = document.querySelector('.input-duration')
+
+// App Class
 class App {
     _map;
     _mapZoomLevel = 10
