@@ -8,8 +8,9 @@ const inputDuration = document.querySelector('.input-duration')
 
 // App Class
 class App {
-    _accessToken = 'pk.eyJ1IjoibWlsa29xcSIsImEiOiJjbDZtZTY3encwMzM3M2JubDFncjgzM2x1In0.LnjZPWDRE_YiImykL9OeMw'
+    #accessToken = 'pk.eyJ1IjoibWlsa29xcSIsImEiOiJjbDZtZTY3encwMzM3M2JubDFncjgzM2x1In0.LnjZPWDRE_YiImykL9OeMw'
     _distance;
+    _fetchType = 'walking'
     _map;
     _mapZoomLevel = 13
     _markers = []
@@ -62,7 +63,7 @@ class App {
         try {
             // Get Map with position coords.
             this._map = new mapboxgl.Map({
-                accessToken: this._accessToken,
+                accessToken: this.#accessToken,
                 container: 'map',
                 style: 'mapbox://styles/mapbox/streets-v11',
                 center: [lng, lat], // starting position
@@ -88,7 +89,7 @@ class App {
         console.log(this._markerStartCoords)
     }
 
-    _setMarkerEnd(e) {
+    async _setMarkerEnd(e) {
         // Get Lng/Lat positions from click on map
         let { lng, lat } = e.lngLat
 
@@ -102,24 +103,30 @@ class App {
                 color: "#FFFFFF",
                 draggable: true
             }).setLngLat([lng, lat])
+                // .setPopup(new mapboxgl.Popup({ closeOnClick: false }).setHTML("<h4>Run in Komotini</h4>")) // add popup
                 .addTo(this._map)
 
             inputPosEnding.value = `${lng}, ${lat.toFixed(4)}`
             this._markers.push(this._markerEnd)
             this._markerRoutes.push([lng, lat])
-            this._updateRoute(this._markerStartCoords, this._markerEndCoords)
+            await this._updateRoute(this._markerStartCoords, this._markerEndCoords)
+            this._markerEnd.setPopup(new mapboxgl.Popup({ closeOnClick: false }).setHTML("<h4>Run in Komotini</h4>" + this._distance + 'km')) // add popup
+            this._markerEnd.togglePopup()
+
 
         }
 
 
         document.querySelector('.form').classList.remove('hidden')
 
-        function onDragEnd() {
+        async function onDragEnd() {
             // Function fires when dragging of 2nd marker stops.
             // Get Lng/Lat from Marker
             this._markerEndCoords = Object.values(this._markerEnd.getLngLat());
             inputPosEnding.value = `${this._markerEndCoords[0].toFixed(4)}, ${this._markerEndCoords[1].toFixed(4)}`;
-            this._updateRoute(this._markerStartCoords, this._markerEndCoords)
+            await this._updateRoute(this._markerStartCoords, this._markerEndCoords)
+            this._markerEnd.setPopup(new mapboxgl.Popup({ closeOnClick: false }).setHTML("<h4>Run in Komotini</h4>" + this._distance + 'km'))
+            this._markerEnd.togglePopup()
         }
         this._markerEnd.on('dragend', onDragEnd.bind(this))
 
@@ -152,7 +159,7 @@ class App {
 
     async _updateRoute(start, end) {
         const query = await fetch(
-            `https://api.mapbox.com/directions/v5/mapbox/cycling/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${this._accessToken}`
+            `https://api.mapbox.com/directions/v5/mapbox/${this._fetchType}/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${this.#accessToken}`
         );
         const json = await query.json();
         const data = json.routes[0];
